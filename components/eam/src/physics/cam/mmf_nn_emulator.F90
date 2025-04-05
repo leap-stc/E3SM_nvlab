@@ -293,6 +293,71 @@ select case (to_lower(trim(cb_nn_var_combo)))
            end do
          end do
       end if
+    case('v6')
+      input(:ncol,0*pver+1:1*pver) = state%t(1:ncol,1:pver)          ! state_t
+      input(:ncol,1*pver+1:2*pver) = state%q(1:ncol,1:pver,1)        ! state_q0001
+      input(:ncol,2*pver+1:3*pver) = state%q(1:ncol,1:pver,ixcldliq) ! cldliq
+      input(:ncol,3*pver+1:4*pver) = state%q(1:ncol,1:pver,ixcldice) ! cldice
+      input(:ncol,4*pver+1:5*pver) = state%u(1:ncol,1:pver)          ! state_u
+      input(:ncol,5*pver+1:6*pver) = state%v(1:ncol,1:pver)          ! state_v
+      ! state dynamics tendencies (large-scale forcings)
+      input(:ncol,6*pver+1:7*pver) = (state%t(1:ncol,1:pver)-state_aphys1%t(1:ncol,1:pver))/1200. ! state_t_dyn
+      ! state_q0_dyn
+      input(:ncol,7*pver+1:8*pver) = (state%q(1:ncol,1:pver,1)-state_aphys1%q(1:ncol,1:pver,1) + state%q(1:ncol,1:pver,ixcldliq)-state_aphys1%q(1:ncol,1:pver,ixcldliq) + state%q(1:ncol,1:pver,ixcldice)-state_aphys1%q(1:ncol,1:pver,ixcldice))/1200.
+      input(:ncol,8*pver+1:9*pver) = (state%u(1:ncol,1:pver)-state_aphys1%u(1:ncol,1:pver))/1200. ! state_u_dyn
+      input(:ncol,9*pver+1:10*pver) = state%t_adv(2,1:ncol,1:pver) ! tm_state_t_dyn
+      ! tm_state_q0_dyn
+      input(:ncol,10*pver+1:11*pver) = state%q_adv(2,1:ncol,1:pver,1) + state%q_adv(2,1:ncol,1:pver,ixcldliq) + state%q_adv(2,1:ncol,1:pver,ixcldice)
+      input(:ncol,11*pver+1:12*pver) = state%u_adv(2,1:ncol,1:pver) ! tm_state_u_dyn
+      ! previous state physics tendencies
+      input(:ncol,12*pver+1:13*pver) = state%t_phy(1,1:ncol,1:pver) ! state_t_prvphy
+      input(:ncol,13*pver+1:14*pver) = state%q_phy(1,1:ncol,1:pver,1) ! state_q0001_prvphy
+      input(:ncol,14*pver+1:15*pver) = state%q_phy(1,1:ncol,1:pver,ixcldliq) ! cldliq prvphy
+      input(:ncol,15*pver+1:16*pver) = state%q_phy(1,1:ncol,1:pver,ixcldice) ! clidice prvphy
+      input(:ncol,16*pver+1:17*pver) = state%u_phy(1,1:ncol,1:pver) ! state_u_prvphy
+      ! 2-step in the past physics tendencies
+      input(:ncol,17*pver+1:18*pver) = state%t_phy(2,1:ncol,1:pver) ! tm_state_t_prvphy
+      input(:ncol,18*pver+1:19*pver) = state%q_phy(2,1:ncol,1:pver,1) ! tm_state_q0001_prvphy
+      input(:ncol,19*pver+1:20*pver) = state%q_phy(2,1:ncol,1:pver,ixcldliq) ! tm cldliq prvphy
+      input(:ncol,20*pver+1:21*pver) = state%q_phy(2,1:ncol,1:pver,ixcldice) ! tm cldice prvphy
+      input(:ncol,21*pver+1:22*pver) = state%u_phy(2,1:ncol,1:pver) ! tm_state_u_prvphy
+      !gas
+      input(:ncol,22*pver+1:23*pver) = ozone(:ncol,1:pver)            ! pbuf_ozone
+      input(:ncol,23*pver+1:24*pver) = ch4(:ncol,1:pver)             ! pbuf_CH4
+      input(:ncol,24*pver+1:25*pver) = n2o(:ncol,1:pver)             ! pbuf_N2O
+      ! 2d vars e.g., ps, solin
+      input(:ncol,25*pver+1) = state%ps(1:ncol)                      ! state_ps
+      input(:ncol,25*pver+2) = solin(1:ncol)                         ! pbuf_SOLIN
+      input(:ncol,25*pver+3) = lhflx(1:ncol)                         ! pbuf_LHFLX
+      input(:ncol,25*pver+4) = shflx(1:ncol)                         ! pbuf_SHFLX
+      input(:ncol,25*pver+5) = taux(1:ncol)                          ! pbuf_TAUX
+      input(:ncol,25*pver+6) = tauy(1:ncol)                          ! pbuf_TAUY
+      input(:ncol,25*pver+7) = coszrs(1:ncol)                        ! pbuf_COSZRS
+      input(:ncol,25*pver+8) = cam_in%ALDIF(:ncol)                   ! cam_in_ALDIF
+      input(:ncol,25*pver+9) = cam_in%ALDIR(:ncol)                   ! cam_in_ALDIR
+      input(:ncol,25*pver+10) = cam_in%ASDIF(:ncol)                  ! cam_in_ASDIF
+      input(:ncol,25*pver+11) = cam_in%ASDIR(:ncol)                  ! cam_in_ASDIR
+      input(:ncol,25*pver+12) = cam_in%LWUP(:ncol)                   ! cam_in_LWUP
+      input(:ncol,25*pver+13) = cam_in%ICEFRAC(:ncol)                ! cam_in_ICEFRAC
+      input(:ncol,25*pver+14) = cam_in%LANDFRAC(:ncol)               ! cam_in_LANDFRAC
+      input(:ncol,25*pver+15) = cam_in%OCNFRAC(:ncol)                ! cam_in_OCNFRAC
+      input(:ncol,25*pver+16) = cam_in%SNOWHICE(:ncol)               ! cam_in_SNOWHICE
+      input(:ncol,25*pver+17) = cam_in%SNOWHLAND(:ncol)              ! cam_in_SNOWHLAND
+      ! cos lat and sin lat
+      do i = 1,ncol ! lat is get_lat_p(lchnk,i), 23/24 needs cos/sin
+        input(i,25*pver+18) = cos(get_rlat_p(lchnk,i)) ! clat
+        input(i,25*pver+19) = sin(get_rlat_p(lchnk,i)) ! slat
+      end do
+      ! RH conversion
+      if (input_rh) then ! relative humidity conversion for input
+         do i = 1,ncol
+           do k=1,pver
+             ! Port of tom's RH =  Rv*p*qv/(R*esat(T))
+             rh_loc = 461.*state%pmid(i,k)*state%q(i,k,1)/(287.*tom_esat(state%t(i,k))) ! note function tom_esat below refercing SAM's sat.F90
+             input(i,1*pver+k) = rh_loc
+           end do
+         end do
+      end if
 end select
 
 
