@@ -5647,6 +5647,9 @@
       <arguments>
         <arg name="ntasks">-n {{ total_tasks }}</arg>
         <arg name="oversubscribe">--oversubscribe --allow-run-as-root</arg>
+        <arg name="hostfile">--hostfile $ENV{PBS_NODEFILE}</arg>
+        <arg name="singularity_pre">singularity exec --nv --cleanenv --bind /glade/work,/glade/u/home/zeyuanhu,/glade/derecho/scratch/zeyuanhu/climsim/inputdata:/storage/inputdata,/glade/derecho/scratch/zeyuanhu/climsim/scratch:/scratch /glade/work/zeyuanhu/climsim-online/updated-climsim-image.sif</arg>
+  </arguments>
       </arguments>
     </mpirun>
     <module_system type="none" />
