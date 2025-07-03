@@ -181,7 +181,7 @@ contains
 
 select case (to_lower(trim(cb_nn_var_combo)))
 
-    case('v2')
+    case('v2', 'v2_conf')
       input(:ncol,0*pver+1:1*pver) = state%t(1:ncol,1:pver)          ! state_t
       input(:ncol,1*pver+1:2*pver) = state%q(1:ncol,1:pver,1)        ! state_q0001
       input(:ncol,2*pver+1:3*pver) = state%q(1:ncol,1:pver,ixcldliq)
@@ -384,6 +384,9 @@ end select
     in_data(:,:) = 0.
     do i=1,ncol
       do k=1,inputlength
+        if (isnan(input(i, k))) then
+          write(iulog, *) 'Input contains NaN at column:', i, 'and index:', k
+        endif
         in_data(i,k) = input(i,k)
       end do
     end do
@@ -403,6 +406,9 @@ end select
     do i=1, ncol
       do k=1,outputlength
         output(i,k) = out_data(i,k)
+        if (isnan(output(i, k))) then
+          write(iulog, *) 'Output contains NaN at column:', i, 'and index:', k
+        endif
       end do
     end do
 
@@ -412,7 +418,7 @@ end select
     ! [TODO] for ensemble, ReLU should be moved before ens-averaging
     do i=1,ncol
       ! ReLU for the last 8 variables 
-      do k=outputlength-7,outputlength
+      do k=361,368
         output(i,k) = max(output(i,k), 0.)
       end do
       ! ! tiny flwds
@@ -439,6 +445,22 @@ end select
     qi_bctend(:ncol,1:pver) = output(1:ncol,3*pver+1:4*pver)       ! kg/kg/s
     u_bctend (:ncol,1:pver) = output(1:ncol,4*pver+1:5*pver)       ! m/s/s
     v_bctend (:ncol,1:pver) = output(1:ncol,5*pver+1:6*pver)       ! m/s/s
+
+if (to_lower(trim(cb_nn_var_combo)) == 'v2_conf') then
+    call outfld('DTPHYSCONF', output(1:ncol,8+6*pver+1:8+7*pver), ncol, state%lchnk)
+    call outfld('DQ1PHYSCONF', output(1:ncol,8+7*pver+1:8+8*pver), ncol, state%lchnk)
+    call outfld('DQNPHYSCONF', output(1:ncol,8+8*pver+1:8+9*pver), ncol, state%lchnk)
+    call outfld('DUPHYSCONF', output(1:ncol,8+9*pver+1:8+10*pver), ncol, state%lchnk)
+    call outfld('DVPHYSCONF', output(1:ncol,8+10*pver+1:8+11*pver), ncol, state%lchnk)
+    call outfld('NETSWCONF', output(1:ncol,8+12*pver), ncol, state%lchnk)
+    call outfld('FLWDSCONF', output(1:ncol,8+13*pver), ncol, state%lchnk)
+    call outfld('PRECSCCONF', output(1:ncol,8+14*pver), ncol, state%lchnk)
+    call outfld('PRECCCONF', output(1:ncol,8+15*pver), ncol, state%lchnk)
+    call outfld('SOLSCONF', output(1:ncol,8+16*pver), ncol, state%lchnk)
+    call outfld('SOLLCONF', output(1:ncol,8+17*pver), ncol, state%lchnk)
+    call outfld('SOLSDCONF', output(1:ncol,8+18*pver), ncol, state%lchnk)
+    call outfld('SOLLDCONF', output(1:ncol,8+19*pver), ncol, state%lchnk)
+end if
  
  ! deny any moisture activity and remove all clouds in the stratosphere:
     if (cb_strato_water_constraint) then
@@ -561,6 +583,21 @@ end subroutine neural_net
     
   ! add diagnostic output fileds
   call addfld ('TROP_IND',horiz_only,   'A', '1', 'lev index for tropopause')
+  if (to_lower(trim(cb_nn_var_combo)) == 'v2_conf') then
+      call addfld ('DTPHYSCONF',(/ 'lev' /), 'A','None','dT/dt conf from physics')
+      call addfld ('DQ1PHYSCONF',(/ 'lev' /), 'A','None','dQ1/dt conf from physics')
+      call addfld ('DQNPHYSCONF',(/ 'lev' /), 'A','None','dQn/dt conf from physics')
+      call addfld ('DUPHYSCONF',(/ 'lev' /), 'A','None','dU/dt conf from physics')
+      call addfld ('DVPHYSCONF',(/ 'lev' /), 'A','None','dU/dt conf from physics')
+      call addfld ('NETSWCONF',horiz_only,   'A', 'None', 'NETSW conf from physics')
+      call addfld ('FLWDSCONF',horiz_only,   'A', 'None', 'FLWDS conf from physics')
+      call addfld ('PRECSCCONF',horiz_only,   'A', 'None', 'PRECSC conf from physics')
+      call addfld ('PRECCCONF',horiz_only,   'A', 'None', 'PRECC conf from physics')
+      call addfld ('SOLSCONF',horiz_only,   'A', 'None', 'SOLS conf from physics')
+      call addfld ('SOLLCONF',horiz_only,   'A', 'None', 'SOLL conf from physics')
+      call addfld ('SOLSDCONF',horiz_only,   'A', 'None', 'SOLSD conf from physics')
+      call addfld ('SOLLDCONF',horiz_only,   'A', 'None', 'SOLLD conf from physics')
+  end if
 
   end subroutine init_neural_net
 #endif
