@@ -1274,11 +1274,13 @@ subroutine phys_run1_NN(phys_state, phys_state_aphys1, ztodt, phys_tend, pbuf2d,
   !-----------------------------------------------------------------------------
   do lchnk=begchunk, endchunk
      phys_buffer_chunk => pbuf_get_chunk(pbuf2d, lchnk)
+     call t_startf('neural_net')
      call neural_net (ptend, phys_state(lchnk), phys_state_aphys1(lchnk), &
                       phys_buffer_chunk, &
                       cam_in(lchnk), cam_out(lchnk), &
                       coszrs(:,lchnk), solin(:,lchnk), &
                       ztodt, lchnk)
+      call t_stopf('neural_net')
      call physics_update (phys_state(lchnk), ptend, ztodt, phys_tend(lchnk))
   end do
 

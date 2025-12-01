@@ -8000,6 +8000,11 @@ Nickname for a specific NN input/output variable combination
 absolute filepath for a torchscript model txt file
 </entry>
 
+<entry id="cb_use_cuda" type="logical" category="mmf_nn_emulator"
+       group="mmf_nn_emulator_nl" valid_values="" >
+option to turn on CUDA for Ftorch inference
+</entry>
+
 <entry id="cb_spinup_step" type="integer" category="mmf_nn_emulator"
        group="mmf_nn_emulator_nl" valid_values="" >
 steps to call CRM before NN for spinup cloud resolving model

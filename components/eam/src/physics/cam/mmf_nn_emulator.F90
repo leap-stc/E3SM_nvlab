@@ -15,11 +15,17 @@ use cam_history_support, only: pflds, fieldname_lenp2
 use cam_abortutils,  only: endrun
 use string_utils,    only: to_lower
 use phys_grid,       only: get_lat_p, get_lon_p, get_rlat_p, get_rlon_p
+use perf_mod
 
 !-------- torch fortran --------
 
-use torch_ftn
-use iso_fortran_env
+! use torch_ftn
+! use iso_fortran_env
+
+use ftorch, only : torch_model, torch_tensor, torch_kCPU, torch_kCUDA, torch_delete, &
+                      torch_tensor_from_array, torch_model_load, torch_model_forward
+
+use, intrinsic :: iso_fortran_env, only : sp => real32
 !--------------------------------------
 
   implicit none
@@ -38,6 +44,7 @@ use iso_fortran_env
   character(len=fieldname_lenp2) :: cb_partial_coupling_vars(pflds)
   character(len=256) :: cb_nn_var_combo = 'v4' ! nickname for a specific NN in/out variable combination, currently support v2 or v4
   character(len=256)    :: cb_torch_model   ! absolute filepath for a torchscript model txt file
+  logical :: cb_use_cuda = .true. ! use CUDA for ftorch inference
 
   ! option to mix the NN output with an SP prediction with customized partition scheduling
   !tendency sent to GCM grid would be: ratio * NN output + (1-ratio) * SP output
@@ -56,11 +63,14 @@ use iso_fortran_env
   logical :: cb_strato_water_constraint = .false. ! zero out cloud (qc and qi) above tropopause in the NN output
   real(r8) :: dtheta_thred = 10.0 ! threshold for determine the tropopause (currently is p<400hPa and dtheta/dz>dtheta_thred = 10K/km) 
 
-  type(torch_module), allocatable :: torch_mod(:)
+  type(torch_model) :: model
 
   ! local
   logical :: cb_top_levels_zero_out = .true.
   integer :: cb_n_levels_zero = 12 ! top n levels to zero out
+
+  integer, parameter :: wp = sp
+
 
 #ifdef MMF_NN_EMULATOR
   public neural_net, init_neural_net, mmf_nn_emulator_readnl, &
@@ -107,13 +117,30 @@ contains
    real(r8), pointer, dimension(:,:) :: ozone, ch4, n2o ! (/pcols,pver/)
 
   !  type(torch_module) :: torch_mod
-   type(torch_tensor_wrap) :: input_tensors
-   type(torch_tensor) :: out_tensor
-   real(real32) :: input_torch(inputlength, pcols)
-   real(real32), pointer :: output_torch(:, :)
+  !  type(torch_tensor_wrap) :: input_tensors
+  !  type(torch_tensor) :: out_tensor
+  !  real(real32) :: input_torch(inputlength, pcols)
+  !  real(real32), pointer :: output_torch(:, :)
+
+   type(torch_tensor), dimension(1) :: in_tensors
+   type(torch_tensor), dimension(1) :: out_tensors
+
+  !  real(wp), dimension(:,:), allocatable, target :: input_torch
+  !  real(wp), dimension(:,:), allocatable, target :: output_torch
+   real(wp), target :: in_data(pcols, inputlength)
+   real(wp), target :: out_data(pcols, outputlength)
+   integer, parameter :: in_dims = 2
+   integer :: in_shape(2)
+   integer, parameter :: in_layout(2) = [1, 2]
+   integer, parameter :: out_dims = 2
+   integer :: out_shape(2)
+   integer, parameter :: out_layout(2) = [1, 2]
+
    real(r8) :: math_pi
 
    math_pi = 3.14159265358979323846_r8
+   in_shape = [pcols, inputlength]
+   out_shape = [pcols, outputlength]
 
    ncol  = state%ncol
    call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -154,7 +181,7 @@ contains
 
 select case (to_lower(trim(cb_nn_var_combo)))
 
-    case('v2')
+    case('v2', 'v2_conf')
       input(:ncol,0*pver+1:1*pver) = state%t(1:ncol,1:pver)          ! state_t
       input(:ncol,1*pver+1:2*pver) = state%q(1:ncol,1:pver,1)        ! state_q0001
       input(:ncol,2*pver+1:3*pver) = state%q(1:ncol,1:pver,ixcldliq)
@@ -266,28 +293,124 @@ select case (to_lower(trim(cb_nn_var_combo)))
            end do
          end do
       end if
+    case('v6')
+      input(:ncol,0*pver+1:1*pver) = state%t(1:ncol,1:pver)          ! state_t
+      input(:ncol,1*pver+1:2*pver) = state%q(1:ncol,1:pver,1)        ! state_q0001
+      input(:ncol,2*pver+1:3*pver) = state%q(1:ncol,1:pver,ixcldliq) ! cldliq
+      input(:ncol,3*pver+1:4*pver) = state%q(1:ncol,1:pver,ixcldice) ! cldice
+      input(:ncol,4*pver+1:5*pver) = state%u(1:ncol,1:pver)          ! state_u
+      input(:ncol,5*pver+1:6*pver) = state%v(1:ncol,1:pver)          ! state_v
+      ! state dynamics tendencies (large-scale forcings)
+      input(:ncol,6*pver+1:7*pver) = (state%t(1:ncol,1:pver)-state_aphys1%t(1:ncol,1:pver))/1200. ! state_t_dyn
+      ! state_q0_dyn
+      input(:ncol,7*pver+1:8*pver) = (state%q(1:ncol,1:pver,1)-state_aphys1%q(1:ncol,1:pver,1) + state%q(1:ncol,1:pver,ixcldliq)-state_aphys1%q(1:ncol,1:pver,ixcldliq) + state%q(1:ncol,1:pver,ixcldice)-state_aphys1%q(1:ncol,1:pver,ixcldice))/1200.
+      input(:ncol,8*pver+1:9*pver) = (state%u(1:ncol,1:pver)-state_aphys1%u(1:ncol,1:pver))/1200. ! state_u_dyn
+      input(:ncol,9*pver+1:10*pver) = state%t_adv(2,1:ncol,1:pver) ! tm_state_t_dyn
+      ! tm_state_q0_dyn
+      input(:ncol,10*pver+1:11*pver) = state%q_adv(2,1:ncol,1:pver,1) + state%q_adv(2,1:ncol,1:pver,ixcldliq) + state%q_adv(2,1:ncol,1:pver,ixcldice)
+      input(:ncol,11*pver+1:12*pver) = state%u_adv(2,1:ncol,1:pver) ! tm_state_u_dyn
+      ! previous state physics tendencies
+      input(:ncol,12*pver+1:13*pver) = state%t_phy(1,1:ncol,1:pver) ! state_t_prvphy
+      input(:ncol,13*pver+1:14*pver) = state%q_phy(1,1:ncol,1:pver,1) ! state_q0001_prvphy
+      input(:ncol,14*pver+1:15*pver) = state%q_phy(1,1:ncol,1:pver,ixcldliq) ! cldliq prvphy
+      input(:ncol,15*pver+1:16*pver) = state%q_phy(1,1:ncol,1:pver,ixcldice) ! clidice prvphy
+      input(:ncol,16*pver+1:17*pver) = state%u_phy(1,1:ncol,1:pver) ! state_u_prvphy
+      ! 2-step in the past physics tendencies
+      input(:ncol,17*pver+1:18*pver) = state%t_phy(2,1:ncol,1:pver) ! tm_state_t_prvphy
+      input(:ncol,18*pver+1:19*pver) = state%q_phy(2,1:ncol,1:pver,1) ! tm_state_q0001_prvphy
+      input(:ncol,19*pver+1:20*pver) = state%q_phy(2,1:ncol,1:pver,ixcldliq) ! tm cldliq prvphy
+      input(:ncol,20*pver+1:21*pver) = state%q_phy(2,1:ncol,1:pver,ixcldice) ! tm cldice prvphy
+      input(:ncol,21*pver+1:22*pver) = state%u_phy(2,1:ncol,1:pver) ! tm_state_u_prvphy
+      !gas
+      input(:ncol,22*pver+1:23*pver) = ozone(:ncol,1:pver)            ! pbuf_ozone
+      input(:ncol,23*pver+1:24*pver) = ch4(:ncol,1:pver)             ! pbuf_CH4
+      input(:ncol,24*pver+1:25*pver) = n2o(:ncol,1:pver)             ! pbuf_N2O
+      ! 2d vars e.g., ps, solin
+      input(:ncol,25*pver+1) = state%ps(1:ncol)                      ! state_ps
+      input(:ncol,25*pver+2) = solin(1:ncol)                         ! pbuf_SOLIN
+      input(:ncol,25*pver+3) = lhflx(1:ncol)                         ! pbuf_LHFLX
+      input(:ncol,25*pver+4) = shflx(1:ncol)                         ! pbuf_SHFLX
+      input(:ncol,25*pver+5) = taux(1:ncol)                          ! pbuf_TAUX
+      input(:ncol,25*pver+6) = tauy(1:ncol)                          ! pbuf_TAUY
+      input(:ncol,25*pver+7) = coszrs(1:ncol)                        ! pbuf_COSZRS
+      input(:ncol,25*pver+8) = cam_in%ALDIF(:ncol)                   ! cam_in_ALDIF
+      input(:ncol,25*pver+9) = cam_in%ALDIR(:ncol)                   ! cam_in_ALDIR
+      input(:ncol,25*pver+10) = cam_in%ASDIF(:ncol)                  ! cam_in_ASDIF
+      input(:ncol,25*pver+11) = cam_in%ASDIR(:ncol)                  ! cam_in_ASDIR
+      input(:ncol,25*pver+12) = cam_in%LWUP(:ncol)                   ! cam_in_LWUP
+      input(:ncol,25*pver+13) = cam_in%ICEFRAC(:ncol)                ! cam_in_ICEFRAC
+      input(:ncol,25*pver+14) = cam_in%LANDFRAC(:ncol)               ! cam_in_LANDFRAC
+      input(:ncol,25*pver+15) = cam_in%OCNFRAC(:ncol)                ! cam_in_OCNFRAC
+      input(:ncol,25*pver+16) = cam_in%SNOWHICE(:ncol)               ! cam_in_SNOWHICE
+      input(:ncol,25*pver+17) = cam_in%SNOWHLAND(:ncol)              ! cam_in_SNOWHLAND
+      ! cos lat and sin lat
+      do i = 1,ncol ! lat is get_lat_p(lchnk,i), 23/24 needs cos/sin
+        input(i,25*pver+18) = cos(get_rlat_p(lchnk,i)) ! clat
+        input(i,25*pver+19) = sin(get_rlat_p(lchnk,i)) ! slat
+      end do
+      ! RH conversion
+      if (input_rh) then ! relative humidity conversion for input
+         do i = 1,ncol
+           do k=1,pver
+             ! Port of tom's RH =  Rv*p*qv/(R*esat(T))
+             rh_loc = 461.*state%pmid(i,k)*state%q(i,k,1)/(287.*tom_esat(state%t(i,k))) ! note function tom_esat below refercing SAM's sat.F90
+             input(i,1*pver+k) = rh_loc
+           end do
+         end do
+      end if
 end select
 
 
     ! do the torch inference    
-    input_torch(:,:) = 0.
+    ! input_torch(:,:) = 0.
+    ! do i=1,ncol
+    !   do k=1,inputlength
+    !     input_torch(k,i) = input(i,k)
+    !   end do
+    ! end do
+    ! !print *, "Creating input tensor"
+    ! call input_tensors%create
+    ! !print *, "Adding input data"
+    ! call input_tensors%add_array(input_torch)
+    ! call torch_mod(1)%forward(input_tensors, out_tensor, flags=module_use_inference_mode)
+    ! call out_tensor%to_array(output_torch)
+    ! do i=1, ncol
+    !   do k=1,outputlength
+    !     output(i,k) = output_torch(k,i)
+    !   end do
+    ! end do
+
+    ! inference with ftorch
+    in_data(:,:) = 0.
     do i=1,ncol
       do k=1,inputlength
-        input_torch(k,i) = input(i,k)
-      end do
-    end do
-    !print *, "Creating input tensor"
-    call input_tensors%create
-    !print *, "Adding input data"
-    call input_tensors%add_array(input_torch)
-    call torch_mod(1)%forward(input_tensors, out_tensor, flags=module_use_inference_mode)
-    call out_tensor%to_array(output_torch)
-    do i=1, ncol
-      do k=1,outputlength
-        output(i,k) = output_torch(k,i)
+        if (isnan(input(i, k))) then
+          write(iulog, *) 'Input contains NaN at column:', i, 'and index:', k
+        endif
+        in_data(i,k) = input(i,k)
       end do
     end do
 
+    call t_startf ('nn_inference')
+    if (cb_use_cuda) then
+      call torch_tensor_from_array(in_tensors(1), in_data, in_layout, torch_kCUDA)
+    else
+      call torch_tensor_from_array(in_tensors(1), in_data, in_layout, torch_kCPU)
+    end if
+    !call torch_tensor_from_array(in_tensors(1), in_data, in_layout, torch_kCUDA)
+    !call torch_tensor_from_array(in_tensors(1), in_data, in_layout, torch_kCUDA)
+    call torch_tensor_from_array(out_tensors(1), out_data, out_layout, torch_kCPU)
+    call torch_model_forward(model, in_tensors, out_tensors)
+    call t_stopf ('nn_inference')
+
+    do i=1, ncol
+      do k=1,outputlength
+        output(i,k) = out_data(i,k)
+        if (isnan(output(i, k))) then
+          write(iulog, *) 'Output contains NaN at column:', i, 'and index:', k
+        endif
+      end do
+    end do
 
     !!! do post processing some non-negative constraints + option to do stratosphere water denial
 
@@ -295,7 +418,7 @@ end select
     ! [TODO] for ensemble, ReLU should be moved before ens-averaging
     do i=1,ncol
       ! ReLU for the last 8 variables 
-      do k=outputlength-7,outputlength
+      do k=361,368
         output(i,k) = max(output(i,k), 0.)
       end do
       ! ! tiny flwds
@@ -322,6 +445,22 @@ end select
     qi_bctend(:ncol,1:pver) = output(1:ncol,3*pver+1:4*pver)       ! kg/kg/s
     u_bctend (:ncol,1:pver) = output(1:ncol,4*pver+1:5*pver)       ! m/s/s
     v_bctend (:ncol,1:pver) = output(1:ncol,5*pver+1:6*pver)       ! m/s/s
+
+if (to_lower(trim(cb_nn_var_combo)) == 'v2_conf') then
+    call outfld('DTPHYSCONF', output(1:ncol,8+6*pver+1:8+7*pver), ncol, state%lchnk)
+    call outfld('DQ1PHYSCONF', output(1:ncol,8+7*pver+1:8+8*pver), ncol, state%lchnk)
+    call outfld('DQNPHYSCONF', output(1:ncol,8+8*pver+1:8+9*pver), ncol, state%lchnk)
+    call outfld('DUPHYSCONF', output(1:ncol,8+9*pver+1:8+10*pver), ncol, state%lchnk)
+    call outfld('DVPHYSCONF', output(1:ncol,8+10*pver+1:8+11*pver), ncol, state%lchnk)
+    call outfld('NETSWCONF', output(1:ncol,8+12*pver), ncol, state%lchnk)
+    call outfld('FLWDSCONF', output(1:ncol,8+13*pver), ncol, state%lchnk)
+    call outfld('PRECSCCONF', output(1:ncol,8+14*pver), ncol, state%lchnk)
+    call outfld('PRECCCONF', output(1:ncol,8+15*pver), ncol, state%lchnk)
+    call outfld('SOLSCONF', output(1:ncol,8+16*pver), ncol, state%lchnk)
+    call outfld('SOLLCONF', output(1:ncol,8+17*pver), ncol, state%lchnk)
+    call outfld('SOLSDCONF', output(1:ncol,8+18*pver), ncol, state%lchnk)
+    call outfld('SOLLDCONF', output(1:ncol,8+19*pver), ncol, state%lchnk)
+end if
  
  ! deny any moisture activity and remove all clouds in the stratosphere:
     if (cb_strato_water_constraint) then
@@ -431,12 +570,34 @@ end subroutine neural_net
 
     integer :: i, k
 
-    allocate(torch_mod (1))
-    call torch_mod(1)%load(trim(cb_torch_model), 0) !0 is not using gpu, for now just use cpu for NN inference
+    ! allocate(torch_mod (1))
+    ! call torch_mod(1)%load(trim(cb_torch_model), 0) !0 is not using gpu, for now just use cpu for NN inference
     !call torch_mod(1)%load(trim(cb_torch_model), module_use_device) will use gpu if available
+    if (cb_use_cuda) then
+      call torch_model_load(model, trim(cb_torch_model), torch_kCUDA)
+    else
+      call torch_model_load(model, trim(cb_torch_model), torch_kCPU)
+    end if
+    ! call torch_model_load(model, trim(cb_torch_model), torch_kCUDA)
+    !call torch_model_load(model, trim(cb_torch_model), torch_kCUDA)
     
   ! add diagnostic output fileds
   call addfld ('TROP_IND',horiz_only,   'A', '1', 'lev index for tropopause')
+  if (to_lower(trim(cb_nn_var_combo)) == 'v2_conf') then
+      call addfld ('DTPHYSCONF',(/ 'lev' /), 'A','None','dT/dt conf from physics')
+      call addfld ('DQ1PHYSCONF',(/ 'lev' /), 'A','None','dQ1/dt conf from physics')
+      call addfld ('DQNPHYSCONF',(/ 'lev' /), 'A','None','dQn/dt conf from physics')
+      call addfld ('DUPHYSCONF',(/ 'lev' /), 'A','None','dU/dt conf from physics')
+      call addfld ('DVPHYSCONF',(/ 'lev' /), 'A','None','dU/dt conf from physics')
+      call addfld ('NETSWCONF',horiz_only,   'A', 'None', 'NETSW conf from physics')
+      call addfld ('FLWDSCONF',horiz_only,   'A', 'None', 'FLWDS conf from physics')
+      call addfld ('PRECSCCONF',horiz_only,   'A', 'None', 'PRECSC conf from physics')
+      call addfld ('PRECCCONF',horiz_only,   'A', 'None', 'PRECC conf from physics')
+      call addfld ('SOLSCONF',horiz_only,   'A', 'None', 'SOLS conf from physics')
+      call addfld ('SOLLCONF',horiz_only,   'A', 'None', 'SOLL conf from physics')
+      call addfld ('SOLSDCONF',horiz_only,   'A', 'None', 'SOLSD conf from physics')
+      call addfld ('SOLLDCONF',horiz_only,   'A', 'None', 'SOLLD conf from physics')
+  end if
 
   end subroutine init_neural_net
 #endif
@@ -544,7 +705,7 @@ end subroutine neural_net
                            cb_partial_coupling, cb_partial_coupling_vars,&
                            cb_use_input_prectm1, &
                            cb_nn_var_combo, &
-                           cb_torch_model, cb_spinup_step, &
+                           cb_torch_model, cb_use_cuda, cb_spinup_step, &
                            cb_do_ramp, cb_ramp_linear_steps, &
                            cb_ramp_option, cb_ramp_factor, cb_ramp_step_0steps, cb_ramp_step_1steps, &
                            cb_strato_water_constraint, dtheta_thred
@@ -588,6 +749,7 @@ end subroutine neural_net
       call mpibcast(cb_ramp_step_1steps, 1,            mpiint,  0, mpicom)
       call mpibcast(cb_strato_water_constraint,   1, mpilog,  0, mpicom)
       call mpibcast(dtheta_thred, 1,            mpir8,  0, mpicom)
+      call mpibcast(cb_use_cuda, 1,                  mpilog,  0, mpicom)
 
 
       ! [TODO] check ierr for each mpibcast call

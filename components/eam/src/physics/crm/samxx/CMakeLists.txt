@@ -8,9 +8,9 @@ file(GLOB CXX_SRC   *.cpp)
 file(GLOB SAMXX_SRC ${CXX_SRC} ${F90_SRC})
 
 # Require pytorch-fortran libs
-find_package(pytorch_proxy REQUIRED)
-find_package(pytorch_fort_proxy REQUIRED)
-
+# find_package(pytorch_proxy REQUIRED)
+# find_package(pytorch_fort_proxy REQUIRED)
+find_package(FTorch)
 # samxx will be a static library
 add_library(samxx STATIC ${SAMXX_SRC})
 if (${USE_CUDA})
@@ -19,7 +19,8 @@ if (${USE_CUDA})
 endif()
 # samxx needs to link with the yakl library
 # also add pytorch-fortran libs
-target_link_libraries(samxx yakl pytorch_fort_proxy pytorch_proxy)
+# target_link_libraries(samxx yakl pytorch_fort_proxy pytorch_proxy)
+target_link_libraries(samxx yakl FTorch::ftorch)
 target_compile_features(samxx PUBLIC cxx_std_14)
 
 # Set fortran compiler flags

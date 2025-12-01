@@ -396,7 +396,7 @@ subroutine cam_run1(cam_in, cam_out, yr, mn, dy, sec )
 
 #endif /* endif MMF_ML_TRAINING || MMF_NN_EMULATOR */
 
-
+   call t_startf ('mmf_or_nn_driver')
 #ifdef MMF_NN_EMULATOR
    call mmf_nn_emulator_driver(phys_state, phys_state_aphys1, phys_state_mmf, dtime, phys_tend, pbuf2d,  cam_in, cam_out, cam_out_mmf)
 #else
@@ -406,6 +406,7 @@ subroutine cam_run1(cam_in, cam_out, yr, mn, dy, sec )
 #else
    call phys_run1(phys_state, dtime, phys_tend, pbuf2d,  cam_in, cam_out, phys_diag)
 #endif
+   call t_stopf  ('mmf_or_nn_driver')
 
 
 #if defined(MMF_ML_TRAINING) || defined(MMF_NN_EMULATOR)
