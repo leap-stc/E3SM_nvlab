@@ -240,9 +240,9 @@
         <command name="load">craype-accel-host</command>
         <command name="load">craype/2.7.20</command>
         <command name="load">cray-mpich</command>
-        <command name="load">cray-hdf5-parallel/1.12.2.3</command>
-        <command name="load">cray-netcdf-hdf5parallel/4.9.0.3</command>
-        <command name="load">cray-parallel-netcdf/1.12.3.3</command>
+        <command name="load">cray-hdf5-parallel</command>
+        <command name="load">cray-netcdf-hdf5parallel</command>
+        <command name="load">cray-parallel-netcdf</command>
         <command name="load">cmake/3.24.3</command>
         <command name="load">evp-patch</command>
       </modules>
@@ -404,9 +404,9 @@
         <command name="load">cray-libsci/23.02.1.1</command>
         <command name="load">craype/2.7.20</command>
         <command name="load">cray-mpich</command>
-        <command name="load">cray-hdf5-parallel/1.12.2.3</command>
-        <command name="load">cray-netcdf-hdf5parallel/4.9.0.3</command>
-        <command name="load">cray-parallel-netcdf/1.12.3.3</command>
+        <command name="load">cray-hdf5-parallel</command>
+        <command name="load">cray-netcdf-hdf5parallel</command>
+        <command name="load">cray-parallel-netcdf</command>
         <command name="load">cmake/3.24.3</command>
       </modules>
     </module_system>
@@ -549,9 +549,9 @@
         <command name="load">cray-libsci/23.02.1.1</command>
         <command name="load">craype/2.7.20</command>
         <command name="load">cray-mpich</command>
-        <command name="load">cray-hdf5-parallel/1.12.2.3</command>
-        <command name="load">cray-netcdf-hdf5parallel/4.9.0.3</command>
-        <command name="load">cray-parallel-netcdf/1.12.3.3</command>
+        <command name="load">cray-hdf5-parallel</command>
+        <command name="load">cray-netcdf-hdf5parallel</command>
+        <command name="load">cray-parallel-netcdf</command>
         <command name="load">cmake/3.24.3</command>
         <command name="load">evp-patch</command>
       </modules>
@@ -687,9 +687,9 @@
         <command name="load">cray-libsci</command>
         <command name="load">craype/2.7.21</command>
         <command name="load">cray-mpich/8.1.26</command>
-        <command name="load">cray-hdf5-parallel/1.12.2.3</command>
-        <command name="load">cray-netcdf-hdf5parallel/4.9.0.3</command>
-        <command name="load">cray-parallel-netcdf/1.12.3.3</command>
+        <command name="load">cray-hdf5-parallel</command>
+        <command name="load">cray-netcdf-hdf5parallel</command>
+        <command name="load">cray-parallel-netcdf</command>
         <command name="load">cmake/3.24.3</command>
       </modules>
     </module_system>
@@ -4194,9 +4194,9 @@
         <command name="load">craype</command>
         <command name="load">cray-mpich/8.1.26</command>
         <command name="load">libfabric/1.15.2.0</command>
-        <command name="load">cray-hdf5-parallel/1.12.2.3</command>
-        <command name="load">cray-netcdf-hdf5parallel/4.9.0.3</command>
-        <command name="load">cray-parallel-netcdf/1.12.3.3</command>
+        <command name="load">cray-hdf5-parallel</command>
+        <command name="load">cray-netcdf-hdf5parallel</command>
+        <command name="load">cray-parallel-netcdf</command>
         <command name="load">cmake/3.22.3</command>
       </modules>
     </module_system>
