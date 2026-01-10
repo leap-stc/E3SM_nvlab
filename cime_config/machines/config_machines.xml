@@ -431,6 +431,7 @@
     <environment_variables compiler="gnugpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
       <env name="NVCC_WRAPPER_DEFAULT_OPTIONS">-arch=sm_80</env>
+      <env name="LD_LIBRARY_PATH">/opt/cray/pe/gcc/12.3.0/snos/lib64:$ENV{LD_LIBRARY_PATH}</env>
     </environment_variables>
     <environment_variables compiler="nvidiagpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
