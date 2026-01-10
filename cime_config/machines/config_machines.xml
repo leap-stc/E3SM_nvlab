@@ -429,9 +429,11 @@
     </environment_variables>
     <environment_variables compiler="gnugpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
+      <env name="NVCC_WRAPPER_DEFAULT_OPTIONS">-arch=sm_80</env>
     </environment_variables>
     <environment_variables compiler="nvidiagpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
+      <env name="NVCC_WRAPPER_DEFAULT_OPTIONS">-arch=sm_80</env>
     </environment_variables>
     <environment_variables compiler="gnu.*" mpilib="mpich">
       <env name="ADIOS2_ROOT">$SHELL{if [ -z "$ADIOS2_ROOT" ]; then echo /global/cfs/cdirs/e3sm/3rdparty/adios2/2.9.1/cray-mpich-8.1.25/gcc-11.2.0; else echo "$ADIOS2_ROOT"; fi}</env>
@@ -575,9 +577,11 @@
     </environment_variables>
     <environment_variables compiler="gnugpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
+      <env name="NVCC_WRAPPER_DEFAULT_OPTIONS">-arch=sm_80</env>
     </environment_variables>
     <environment_variables compiler="nvidiagpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
+      <env name="NVCC_WRAPPER_DEFAULT_OPTIONS">-arch=sm_80</env>
     </environment_variables>
     <environment_variables compiler="gnu.*" mpilib="mpich">
       <env name="ADIOS2_ROOT">$SHELL{if [ -z "$ADIOS2_ROOT" ]; then echo /global/cfs/cdirs/e3sm/3rdparty/adios2/2.9.1/cray-mpich-8.1.25/gcc-11.2.0; else echo "$ADIOS2_ROOT"; fi}</env>
