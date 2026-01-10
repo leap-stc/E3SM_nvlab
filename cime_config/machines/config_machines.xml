@@ -432,6 +432,7 @@
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
       <env name="NVCC_WRAPPER_DEFAULT_OPTIONS">-arch=sm_80</env>
       <env name="LD_LIBRARY_PATH">/lib64:$ENV{LD_LIBRARY_PATH}</env>
+      <env name="LD_PRELOAD">/lib64/libgcc_s.so.1</env>
     </environment_variables>
     <environment_variables compiler="nvidiagpu">
       <env name="MPICH_GPU_SUPPORT_ENABLED">1</env>
