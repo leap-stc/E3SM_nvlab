@@ -27,9 +27,15 @@ Table of Contents
 
 Quick Start
 --------------------------------------------------------------------------------
-The [Quick Start](https://e3sm.org/model/running-e3sm/e3sm-quick-start/) page 
+The official [Quick Start](https://e3sm.org/model/running-e3sm/e3sm-quick-start/) page 
 includes instructions on obtaining the necessary code and input data for model 
 setup and execution on a supported machine.
+
+You can also git clone this repo and run the following command:
+```
+git submodule update --init --recursive
+```
+to recursively update the embedded git repositories.
 
 Supported Machines 
 --------------------------------------------------------------------------------
