@@ -376,20 +376,20 @@
       <modules compiler="nvidia.*">
         <command name="load">PrgEnv-nvidia</command>
         <command name="load">nvidia/22.7</command>
-        <command name="load">pytorch/2.0.1</command>
+        <command name="load">pytorch</command>
       </modules>
 
       <modules compiler="gnugpu">
-        <command name="load">cudatoolkit/11.7</command>
+        <command name="load">cudatoolkit/12.9</command>
         <command name="load">craype-accel-nvidia80</command>
-        <command name="load">pytorch/2.0.1</command>
+        <command name="load">pytorch</command>
       </modules>
 
       <modules compiler="nvidiagpu">
-        <command name="load">cudatoolkit/11.7</command>
+        <command name="load">cudatoolkit/12.9</command>
         <command name="load">craype-accel-nvidia80</command>
         <command name="load">gcc-mixed/11.2.0</command>
-        <command name="load">pytorch/2.0.1</command>
+        <command name="load">pytorch</command>
       </modules>
 
       <modules compiler="gnu">
@@ -528,12 +528,12 @@
       </modules>
 
       <modules compiler="gnugpu">
-        <command name="load">cudatoolkit/11.7</command>
+        <command name="load">cudatoolkit/12.9</command>
         <command name="load">craype-accel-nvidia80</command>
       </modules>
 
       <modules compiler="nvidiagpu">
-        <command name="load">cudatoolkit/11.7</command>
+        <command name="load">cudatoolkit/12.9</command>
         <command name="load">craype-accel-nvidia80</command>
       </modules>
 
